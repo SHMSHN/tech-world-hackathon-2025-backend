@@ -77,3 +77,9 @@ vector_port = 54328
 
 [functions.transcribe]
 verify_jwt = false
+
+[functions.users]
+verify_jwt = false
+
+[functions.users-detail]
+verify_jwt = false
