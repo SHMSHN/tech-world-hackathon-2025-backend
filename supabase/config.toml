@@ -83,3 +83,9 @@ verify_jwt = false
 
 [functions.users-detail]
 verify_jwt = false
+
+[functions.summarize]
+verify_jwt = false
+
+[functions.logs-preview]
+verify_jwt = false
