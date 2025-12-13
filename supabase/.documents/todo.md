@@ -1,11 +1,10 @@
-# ケアログ API 実装 TODO
+# API 実装 TODO
 
 ## 現状
 
 ### 実装済み
 
 - [x] POST /transcribe - 音声文字起こし
-- [x] POST /summarize - テキスト要約（AI）
 - [x] AI 抽象化レイヤー（OpenAI/Sakura 切り替え可能）
 - [x] CORS ユーティリティ
 - [x] DB マイグレーション（caregivers, users, logs, alerts + seed）
