@@ -92,3 +92,12 @@ verify_jwt = false
 
 [functions.logs-confirm]
 verify_jwt = false
+
+[functions.logs]
+verify_jwt = false
+
+[functions.logs-stream]
+verify_jwt = false
+
+[functions.assess-risk]
+verify_jwt = false

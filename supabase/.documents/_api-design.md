@@ -63,6 +63,8 @@ http://localhost:54321/functions/v1
 | GET      | /users-detail       | 利用者詳細             | 実装済 |
 | POST     | /logs-preview       | ログプレビュー（AI）   | 実装済 |
 | POST     | /logs-confirm       | ログ確定・保存         | 実装済 |
+| GET      | /logs               | ログ一覧取得           | 実装済 |
+| GET      | /logs-stream        | ログSSEストリーム      | 実装済 |
 | POST     | /care-plan/generate | 介護計画生成（AI）     | 未実装 |
 | PATCH    | /care-plan/:id      | 介護計画ステータス更新 | 未実装 |
 
@@ -253,6 +255,136 @@ curl "http://localhost:54321/functions/v1/users-detail?id=1"
 
 ---
 
+### GET /logs
+
+特定利用者のログ一覧を取得します（利用者の基本情報含む）。
+
+#### リクエスト
+
+**パラメータ:**
+
+| パラメータ | 型     | 必須 | 説明                       |
+| ---------- | ------ | ---- | -------------------------- |
+| userId     | number | Yes  | 利用者 ID                  |
+| limit      | number | No   | 取得件数（デフォルト: 50） |
+| offset     | number | No   | オフセット（デフォルト: 0）|
+
+#### レスポンス
+
+```json
+{
+  "user": {
+    "id": 1,
+    "name": "山田 花子",
+    "phone": "090-1234-5678",
+    "address": "東京都世田谷区成城1-2-3",
+    "caregiver": "田中 美咲",
+    "startDate": "2024-04-01"
+  },
+  "logs": [
+    {
+      "id": 1,
+      "createdAt": "2024-12-13T18:30:00Z",
+      "author": "田中 美咲",
+      "content": "夕食は8割ほど摂取..."
+    }
+  ]
+}
+```
+
+#### レスポンスフィールド
+
+**user オブジェクト:**
+
+| フィールド | 型             | 説明           |
+| ---------- | -------------- | -------------- |
+| id         | number         | 利用者 ID      |
+| name       | string         | 氏名           |
+| phone      | string \| null | 電話番号       |
+| address    | string \| null | 住所           |
+| caregiver  | string \| null | 担当介護者名   |
+| startDate  | string \| null | サービス開始日 |
+
+**logs 配列:**
+
+| フィールド | 型             | 説明                 |
+| ---------- | -------------- | -------------------- |
+| id         | number         | ログ ID              |
+| createdAt  | string         | 作成日時（ISO 8601） |
+| author     | string \| null | 記録者名             |
+| content    | string         | ログ内容             |
+
+#### cURL 例
+
+```bash
+curl "http://localhost:54321/functions/v1/logs?userId=1&limit=20"
+```
+
+---
+
+### GET /logs-stream
+
+特定利用者のログをリアルタイムで監視します（Server-Sent Events）。
+
+#### リクエスト
+
+**パラメータ:**
+
+| パラメータ | 型     | 必須 | 説明      |
+| ---------- | ------ | ---- | --------- |
+| userId     | number | Yes  | 利用者 ID |
+
+#### レスポンス
+
+**Content-Type:** `text/event-stream`
+
+SSE イベント形式でログの変更を配信します。
+
+**イベント種別:**
+
+| イベント      | 説明                       |
+| ------------- | -------------------------- |
+| connected     | 接続確立時                 |
+| subscribed    | Realtime 購読開始時        |
+| log_inserted  | 新規ログ追加時             |
+
+**log_inserted イベントのデータ:**
+
+```json
+{
+  "id": 1,
+  "createdAt": "2024-12-13T18:30:00Z",
+  "author": "田中 美咲",
+  "content": "夕食は8割ほど摂取...",
+  "userId": 1,
+  "userName": "山田 花子"
+}
+```
+
+#### JavaScript 使用例
+
+```javascript
+const eventSource = new EventSource(
+  "http://localhost:54321/functions/v1/logs-stream?userId=1"
+);
+
+eventSource.addEventListener("log_inserted", (event) => {
+  const log = JSON.parse(event.data);
+  console.log("新規ログ:", log);
+});
+
+eventSource.addEventListener("connected", (event) => {
+  console.log("接続確立:", JSON.parse(event.data));
+});
+```
+
+#### 注意事項
+
+- 60 秒ごとにキープアライブ（`: keep-alive`）が送信されます
+- Edge Function のタイムアウト（150 秒）を考慮し、長時間接続時は再接続処理を実装してください
+
+---
+
 ## 未実装 API
 
 ### POST /logs/preview
@@ -434,3 +566,4 @@ SAKURA_CHAT_MODEL=gpt-oss-120b
 | 2025-12-13 | 初版作成                                          |
 | 2025-12-13 | alerts 関連 API・フィールド削除                   |
 | 2025-12-13 | nameKana フィールド追加、recentLogs を createdAt に変更 |
+| 2025-12-13 | GET /logs、GET /logs-stream（SSE）追加            |

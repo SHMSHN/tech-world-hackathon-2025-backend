@@ -163,6 +163,33 @@ curl -X POST http://localhost:54321/functions/v1/assess-risk \
 ]
 ```
 
+## デプロイ (Supabase Cloud)
+
+### 初回デプロイ
+
+```bash
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase secrets set AI_PROVIDER=sakura
+supabase secrets set SAKURA_API_KEY=<your-sakura-api-key>
+supabase db push
+supabase functions deploy
+```
+
+### 追加実装時
+
+```bash
+# Functionの修正・追加
+supabase functions deploy <function-name>
+
+# DBスキーマ変更
+supabase migration new <name>
+supabase db push
+
+# 環境変数追加
+supabase secrets set KEY=value
+```
+
 ## 停止
 
 ```bash

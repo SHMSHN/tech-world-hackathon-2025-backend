@@ -1,0 +1,266 @@
+{
+  "info": {
+    "name": "TECH WORLD HACKATHON 2025 API",
+    "description": "API仕様書",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:54321/functions/v1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET /users - Patientsリスト取得",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Patientsのリストを返す（あいうえお順）"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users-detail - User詳細取得（クエリパラメータ）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users-detail?id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users-detail"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "利用者ID"
+                }
+              ]
+            },
+            "description": "User (Patient) の詳細情報 + ログ一覧を返す"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users-detail/:id - User詳細取得（パスパラメータ）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users-detail/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users-detail", "1"]
+            },
+            "description": "User (Patient) の詳細情報 + ログ一覧を返す（パスパラメータ版）"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "GET /logs - ログ一覧取得（ユーザー情報含む）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs?userId=1&limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "利用者ID（必須）"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "取得件数（デフォルト: 50）"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "オフセット（デフォルト: 0）"
+                }
+              ]
+            },
+            "description": "特定利用者のログ一覧を取得する（利用者の基本情報含む）\n\nレスポンス例:\n{\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"山田 花子\",\n    \"phone\": \"090-1234-5678\",\n    \"address\": \"東京都世田谷区...\",\n    \"caregiver\": \"田中 美咲\",\n    \"startDate\": \"2024-04-01\"\n  },\n  \"logs\": [...]\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /logs-stream - ログSSEストリーム（リアルタイム）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs-stream?userId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs-stream"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "利用者ID（必須）"
+                }
+              ]
+            },
+            "description": "Server-Sent Events（SSE）でログのリアルタイム更新を受信する\n\nContent-Type: text/event-stream\n\nイベント種別:\n- connected: 接続確立\n- subscribed: Realtime購読開始\n- log_inserted: 新規ログ追加\n\n注意: Postmanではストリーミングの完全なテストは難しいため、ブラウザまたはEventSourceで確認推奨"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /logs-preview - 音声からログ生成",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": "",
+                  "description": "音声ファイル（mp3, m4a, wav等）25MB以下"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/logs-preview",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs-preview"]
+            },
+            "description": "音声ファイルからログを生成する（Whisper文字起こし + 要約）\n\n対応形式: mp3, mp4, m4a, wav, webm, ogg, flac\nサイズ上限: 25MB"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /logs-confirm - ログ確定（DB保存）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"caregiverId\": 1,\n  \"content\": \"朝7時に起床。食事は全食。特に問題なし。\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/logs-confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs-confirm"]
+            },
+            "description": "ログを確定してDBに保存する（最終確認後）\n\n必須フィールド:\n- userId: 利用者ID\n- caregiverId: 介護者ID\n- content: ログ本文"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI Processing",
+      "item": [
+        {
+          "name": "POST /transcribe - 音声文字起こし",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": "",
+                  "description": "音声ファイル（mp3, m4a, wav等）25MB以下"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transcribe",
+              "host": ["{{baseUrl}}"],
+              "path": ["transcribe"]
+            },
+            "description": "音声ファイルをテキストに変換する（文字起こしのみ、要約なし）\n\n対応形式: mp3, mp4, m4a, wav, webm, ogg, flac\nサイズ上限: 25MB"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /assess-risk - 介護リスク評価・計画生成",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/assess-risk",
+              "host": ["{{baseUrl}}"],
+              "path": ["assess-risk"]
+            },
+            "description": "介護ログからリスク評価を行い、介護計画を生成してDBに保存する\n\n【リクエスト方法1】user_idを指定（推奨）\n{\n  \"user_id\": 1\n}\n→ DBから該当ユーザーのログを自動取得して分析\n\n【リクエスト方法2】careLogsを直接指定\n{\n  \"careLogs\": [\n    {\"id\": 1, \"content\": \"朝食は全量摂取...\"},\n    {\"id\": 2, \"content\": \"服薬忘れあり...\"}\n  ]\n}\n\n【レスポンス例】\n[\n  {\n    \"id\": 1,\n    \"level\": \"alert\",\n    \"title\": \"服薬管理の改善\",\n    \"tasks\": [\"服薬チェックリストの導入\", \"声かけの徹底\"],\n    \"goal\": \"服薬忘れをゼロにする\",\n    \"description\": \"服薬チェックリストの導入\"\n  }\n]\n\nlevel: \"alert\"（高リスク）または \"warning\"（注意）"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /summarize - テキスト要約",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"今日は朝7時に起床しました。朝食は全食でした。食後に血圧測定を行い、120/80でした。特に問題はありませんでした。\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/summarize",
+              "host": ["{{baseUrl}}"],
+              "path": ["summarize"]
+            },
+            "description": "テキストを要約する\n\n対応Content-Type:\n- application/json（推奨）\n- multipart/form-data\n- text/plain"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
