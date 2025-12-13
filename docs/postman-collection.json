@@ -261,6 +261,144 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Care Plans",
+      "item": [
+        {
+          "name": "GET /care-plans - 介護計画一覧取得",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/care-plans?user_id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["care-plans"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "1",
+                  "description": "利用者ID（必須）"
+                }
+              ]
+            },
+            "description": "特定利用者の介護計画一覧を取得する（作成日時の降順）\n\n【レスポンス例】\n{\n  \"items\": [\n    {\n      \"id\": 1,\n      \"plan_uuid\": \"abc-123\",\n      \"user_id\": 1,\n      \"title\": \"服薬管理の改善\",\n      \"goal\": \"服薬忘れをゼロにする\",\n      \"tasks\": [\"服薬チェックリストの導入\", \"声かけの徹底\"],\n      \"level\": \"alert\",\n      \"status\": \"pending\",\n      \"created_at\": \"2024-01-01T00:00:00Z\"\n    }\n  ]\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /care-plans-create - 介護計画作成",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"items\": [\n    {\n      \"title\": \"服薬管理の改善\",\n      \"goal\": \"服薬忘れをゼロにする\",\n      \"tasks\": [\"服薬チェックリストの導入\", \"声かけの徹底\"],\n      \"level\": \"alert\"\n    }\n  ],\n  \"replace_pending\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/care-plans-create",
+              "host": ["{{baseUrl}}"],
+              "path": ["care-plans-create"]
+            },
+            "description": "介護計画を手動で作成する\n\n【リクエストパラメータ】\n- user_id: 利用者ID（必須）\n- items: 計画の配列（必須、1件以上）\n  - title: タイトル（必須）\n  - goal: 目標（任意）\n  - tasks: タスク配列（任意）\n  - level: \"alert\" または \"warning\"（デフォルト: warning）\n  - status: \"pending\" または \"done\"（デフォルト: pending）\n  - uuid: 任意。未指定ならサーバーで生成\n- replace_pending: true の場合、既存の pending を削除してから登録（デフォルト: false）\n\n【レスポンス例】\n{\n  \"items\": [\n    {\n      \"id\": 1,\n      \"plan_uuid\": \"abc-123\",\n      \"title\": \"服薬管理の改善\",\n      \"goal\": \"服薬忘れをゼロにする\",\n      \"tasks\": [\"服薬チェックリストの導入\"],\n      \"level\": \"alert\",\n      \"status\": \"pending\",\n      \"created_at\": \"2024-01-01T00:00:00Z\"\n    }\n  ]\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /care-plans-delete - 介護計画削除",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"uuid\": \"abc-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/care-plans-delete",
+              "host": ["{{baseUrl}}"],
+              "path": ["care-plans-delete"]
+            },
+            "description": "介護計画を削除する\n\n【リクエストパラメータ】\n- user_id: 利用者ID（必須）\n- uuid: 削除する計画のUUID（単一）\n- uuids: 削除する計画のUUID配列（複数削除時）\n\nuuid か uuids のどちらか一方を指定\n\n【レスポンス例】\n{\n  \"deletedUuids\": [\"abc-123\"]\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /care-plans-done - 介護計画を完了にする",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid\": \"abc-123\",\n  \"user_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/care-plans-done",
+              "host": ["{{baseUrl}}"],
+              "path": ["care-plans-done"]
+            },
+            "description": "介護計画のステータスを「done（完了）」に更新する\n\n【リクエストパラメータ】\n- uuid: 更新する計画のUUID（推奨、単一）\n- uuids: 更新する計画のUUID配列（複数更新時）\n- id: 更新する計画のID（単一）\n- ids: 更新する計画のID配列（複数更新時）\n- user_id: 利用者ID（任意、指定時はその範囲に限定）\n\nuuid/uuids または id/ids のどちらかを指定（UUID推奨）\n\n【レスポンス例】\n{\n  \"updatedUuids\": [\"abc-123\"],\n  \"status\": \"done\"\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /care-plans-pending - 介護計画を未完了に戻す",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid\": \"abc-123\",\n  \"user_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/care-plans-pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["care-plans-pending"]
+            },
+            "description": "介護計画のステータスを「pending（未完了）」に戻す\n\n【リクエストパラメータ】\n- uuid: 更新する計画のUUID（推奨、単一）\n- uuids: 更新する計画のUUID配列（複数更新時）\n- id: 更新する計画のID（単一）\n- ids: 更新する計画のID配列（複数更新時）\n- user_id: 利用者ID（任意、指定時はその範囲に限定）\n\nuuid/uuids または id/ids のどちらかを指定（UUID推奨）\n\n【レスポンス例】\n{\n  \"updatedUuids\": [\"abc-123\"],\n  \"status\": \"pending\"\n}"
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }
