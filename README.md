@@ -195,3 +195,56 @@ supabase secrets set KEY=value
 ```bash
 supabase stop
 ```
+
+## 追加エンドポイント: care_plans のステータス更新
+
+### POST /care-plans-done
+
+`care_plans.status` を `done` に更新します。`id` もしくは `ids` を指定してください。任意で `user_id` でスコープを制限できます。
+
+```bash
+# 単一ID
+curl -X POST http://localhost:54321/functions/v1/care-plans-done \
+  -H "Content-Type: application/json" \
+  -d '{"id": 10}'
+
+# 複数ID
+curl -X POST http://localhost:54321/functions/v1/care-plans-done \
+  -H "Content-Type: application/json" \
+  -d '{"ids": [10, 11, 12]}'
+
+# user_id でスコープを絞る（該当ユーザーの行のみ更新）
+curl -X POST http://localhost:54321/functions/v1/care-plans-done \
+  -H "Content-Type: application/json" \
+  -d '{"ids": [10, 11, 12], "user_id": 1}'
+```
+
+multipart/form-data 例:
+
+```bash
+curl -X POST http://localhost:54321/functions/v1/care-plans-done \
+  -F 'ids=[10,11,12]' \
+  -F 'user_id=1'
+```
+
+レスポンス例:
+
+```json
+{ "updatedIds": [10, 11, 12], "status": "done" }
+```
+
+### POST /care-plans-pending
+
+`care_plans.status` を `pending` に更新します。使い方は `/care-plans-done` と同様です。
+
+```bash
+curl -X POST http://localhost:54321/functions/v1/care-plans-pending \
+  -H "Content-Type: application/json" \
+  -d '{"ids": [10, 11, 12], "user_id": 1}'
+```
+
+レスポンス例:
+
+```json
+{ "updatedIds": [10, 11, 12], "status": "pending" }
+```
