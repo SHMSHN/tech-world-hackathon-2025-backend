@@ -145,6 +145,7 @@ curl -X POST http://localhost:54321/functions/v1/assess-risk \
 ```json
 [
   {
+    "uuid": "b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12",
     "id": 1,
     "level": "alert",
     "title": "服薬漏れが2日連続",
@@ -153,6 +154,7 @@ curl -X POST http://localhost:54321/functions/v1/assess-risk \
     "description": "服薬タイマーを設定する"
   },
   {
+    "uuid": "cc2d2b51-3b0f-4c05-8e0f-5cfb2ddbbf3a",
     "id": 2,
     "level": "warning",
     "title": "転倒リスク（夜間のふらつき）",
@@ -163,32 +165,7 @@ curl -X POST http://localhost:54321/functions/v1/assess-risk \
 ]
 ```
 
-## デプロイ (Supabase Cloud)
-
-### 初回デプロイ
-
-```bash
-supabase login
-supabase link --project-ref <your-project-ref>
-supabase secrets set AI_PROVIDER=sakura
-supabase secrets set SAKURA_API_KEY=<your-sakura-api-key>
-supabase db push
-supabase functions deploy
-```
-
-### 追加実装時
-
-```bash
-# Functionの修正・追加
-supabase functions deploy <function-name>
-
-# DBスキーマ変更
-supabase migration new <name>
-supabase db push
-
-# 環境変数追加
-supabase secrets set KEY=value
-```
+備考: `uuid` はレスポンスに含まれ、DB の `care_plans.plan_uuid` にも保存されます。
 
 ## 停止
 
@@ -200,37 +177,43 @@ supabase stop
 
 ### POST /care-plans-done
 
-`care_plans.status` を `done` に更新します。`id` もしくは `ids` を指定してください。任意で `user_id` でスコープを制限できます。
+`care_plans.status` を `done` に更新します。`uuid` もしくは `uuids`（推奨）を指定してください。任意で `user_id` でスコープを制限できます。
 
 ```bash
-# 単一ID
+# 単一UUID
 curl -X POST http://localhost:54321/functions/v1/care-plans-done \
   -H "Content-Type: application/json" \
-  -d '{"id": 10}'
+  -d '{"uuid": "b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12"}'
 
-# 複数ID
+# 複数UUID
 curl -X POST http://localhost:54321/functions/v1/care-plans-done \
   -H "Content-Type: application/json" \
-  -d '{"ids": [10, 11, 12]}'
+  -d '{"uuids": ["b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12", "cc2d2b51-3b0f-4c05-8e0f-5cfb2ddbbf3a"]}'
 
 # user_id でスコープを絞る（該当ユーザーの行のみ更新）
 curl -X POST http://localhost:54321/functions/v1/care-plans-done \
   -H "Content-Type: application/json" \
-  -d '{"ids": [10, 11, 12], "user_id": 1}'
+  -d '{"uuids": ["...","..."], "user_id": 1}'
 ```
 
 multipart/form-data 例:
 
 ```bash
 curl -X POST http://localhost:54321/functions/v1/care-plans-done \
-  -F 'ids=[10,11,12]' \
+  -F 'uuids=["b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12","cc2d2b51-3b0f-4c05-8e0f-5cfb2ddbbf3a"]' \
   -F 'user_id=1'
 ```
 
 レスポンス例:
 
 ```json
-{ "updatedIds": [10, 11, 12], "status": "done" }
+{
+  "updatedUuids": [
+    "b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12",
+    "cc2d2b51-3b0f-4c05-8e0f-5cfb2ddbbf3a"
+  ],
+  "status": "done"
+}
 ```
 
 ### POST /care-plans-pending
@@ -240,11 +223,14 @@ curl -X POST http://localhost:54321/functions/v1/care-plans-done \
 ```bash
 curl -X POST http://localhost:54321/functions/v1/care-plans-pending \
   -H "Content-Type: application/json" \
-  -d '{"ids": [10, 11, 12], "user_id": 1}'
+  -d '{"uuids": ["b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12"], "user_id": 1}'
 ```
 
 レスポンス例:
 
 ```json
-{ "updatedIds": [10, 11, 12], "status": "pending" }
+{
+  "updatedUuids": ["b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12"],
+  "status": "pending"
+}
 ```

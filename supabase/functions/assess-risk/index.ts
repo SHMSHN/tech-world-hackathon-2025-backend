@@ -136,6 +136,9 @@ Deno.serve(async (req) => {
     const result = await provider.assessRisk(careLogs);
     // 返却フォーマットをユーザー指定の配列に変換（AI出力をパススルー）
     items = (result.findings ?? []).map((f, i) => {
+      const uuid = (globalThis as any)?.crypto?.randomUUID
+        ? (globalThis as any).crypto.randomUUID()
+        : `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 10)}`;
       const level = f.severity === "high" ? "alert" : "warning";
       const tasks = Array.isArray(f.tasks)
         ? f.tasks.slice(0, 3)
@@ -147,6 +150,7 @@ Deno.serve(async (req) => {
       const description =
         (tasks.length > 0 ? tasks[0] : goal || f.recommendation || "") || "";
       return {
+        uuid,
         id: i + 1,
         level,
         title: f.title,
@@ -183,9 +187,21 @@ Deno.serve(async (req) => {
           }
         }
       }
+      // 既存の pending を削除（同一ユーザーの古い下書きをクリア）
+      if (resolvedUserId != null) {
+        const { error: delErr } = await supabase
+          .from("care_plans")
+          .delete()
+          .eq("user_id", resolvedUserId)
+          .eq("status", "pending");
+        if (delErr) {
+          console.error("Failed to delete pending care_plans:", delErr);
+        }
+      }
       if (resolvedUserId != null && items.length > 0) {
         const payload = items.map((it) => ({
           user_id: resolvedUserId!,
+          plan_uuid: (it as any).uuid,
           title: it.title,
           goal: it.goal,
           tasks: it.tasks, // JSONB配列として保存

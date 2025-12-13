@@ -6,6 +6,8 @@ interface UpdateStatusBody {
   id?: number | string;
   ids?: Array<number | string>;
   user_id?: number | string;
+  uuid?: string;
+  uuids?: string[] | string;
 }
 
 function toNumberArray(val: unknown): number[] {
@@ -43,10 +45,41 @@ Deno.serve(async (req) => {
   try {
     const contentType = req.headers.get("content-type") ?? "";
     let ids: number[] = [];
+    let uuids: string[] = [];
     let providedUserId: number | null = null;
 
     if (contentType.includes("application/json")) {
       const body = (await req.json()) as UpdateStatusBody;
+      if (typeof body.uuid === "string" && body.uuid.trim()) {
+        uuids = [body.uuid.trim()];
+      } else if (body.uuids) {
+        if (Array.isArray(body.uuids)) {
+          uuids = body.uuids
+            .map((s) => (typeof s === "string" ? s.trim() : ""))
+            .filter((s) => !!s);
+        } else if (typeof body.uuids === "string") {
+          try {
+            if (body.uuids.trim().startsWith("[")) {
+              const arr = JSON.parse(body.uuids);
+              if (Array.isArray(arr)) {
+                uuids = arr
+                  .map((s) => (typeof s === "string" ? s.trim() : ""))
+                  .filter((s) => !!s);
+              }
+            } else {
+              uuids = body.uuids
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => !!s);
+            }
+          } catch {
+            uuids = body.uuids
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => !!s);
+          }
+        }
+      }
       if (typeof body.id === "number") {
         ids = [body.id];
       } else if (typeof body.id === "string") {
@@ -65,7 +98,33 @@ Deno.serve(async (req) => {
       const form = await req.formData();
       const id = form.get("id");
       const idsField = form.get("ids");
+      const uuid = form.get("uuid");
+      const uuidsField = form.get("uuids");
       const uid = form.get("user_id");
+      if (typeof uuid === "string" && uuid.trim()) {
+        uuids = [uuid.trim()];
+      } else if (typeof uuidsField === "string") {
+        try {
+          if (uuidsField.trim().startsWith("[")) {
+            const arr = JSON.parse(uuidsField);
+            if (Array.isArray(arr)) {
+              uuids = arr
+                .map((s) => (typeof s === "string" ? s.trim() : ""))
+                .filter((s) => !!s);
+            }
+          } else {
+            uuids = uuidsField
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => !!s);
+          }
+        } catch {
+          uuids = uuidsField
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => !!s);
+        }
+      }
       if (typeof id === "string" && id.trim()) {
         const p = parseInt(id, 10);
         if (Number.isFinite(p)) ids = [p];
@@ -88,6 +147,36 @@ Deno.serve(async (req) => {
       try {
         const text = await req.text();
         const body = JSON.parse(text) as UpdateStatusBody;
+        if (typeof body.uuid === "string" && body.uuid.trim()) {
+          uuids = [body.uuid.trim()];
+        } else if (body.uuids) {
+          if (Array.isArray(body.uuids)) {
+            uuids = body.uuids
+              .map((s) => (typeof s === "string" ? s.trim() : ""))
+              .filter((s) => !!s);
+          } else if (typeof body.uuids === "string") {
+            try {
+              if (body.uuids.trim().startsWith("[")) {
+                const arr = JSON.parse(body.uuids);
+                if (Array.isArray(arr)) {
+                  uuids = arr
+                    .map((s) => (typeof s === "string" ? s.trim() : ""))
+                    .filter((s) => !!s);
+                }
+              } else {
+                uuids = body.uuids
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => !!s);
+              }
+            } catch {
+              uuids = body.uuids
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => !!s);
+            }
+          }
+        }
         if (typeof body.id === "number") {
           ids = [body.id];
         } else if (typeof body.id === "string") {
@@ -107,9 +196,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!Array.isArray(ids) || ids.length === 0) {
+    if (
+      (!Array.isArray(uuids) || uuids.length === 0) &&
+      (!Array.isArray(ids) || ids.length === 0)
+    ) {
       return new Response(
-        JSON.stringify({ error: "id もしくは ids を指定してください" }),
+        JSON.stringify({
+          error: "uuid / uuids（推奨）または id / ids を指定してください",
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -121,8 +215,12 @@ Deno.serve(async (req) => {
     let query = supabase
       .from("care_plans")
       .update({ status: "pending" })
-      .in("id", ids)
-      .select("id");
+      .select("id,plan_uuid");
+    if (uuids.length > 0) {
+      query = query.in("plan_uuid", uuids);
+    } else {
+      query = query.in("id", ids);
+    }
     if (providedUserId != null) {
       query = query.eq("user_id", providedUserId);
     }
@@ -133,8 +231,10 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const updatedIds = Array.isArray(data) ? data.map((r: any) => r.id) : [];
-    return new Response(JSON.stringify({ updatedIds, status: "pending" }), {
+    const updatedUuids = Array.isArray(data)
+      ? data.map((r: any) => r.plan_uuid)
+      : [];
+    return new Response(JSON.stringify({ updatedUuids, status: "pending" }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
