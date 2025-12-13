@@ -56,7 +56,8 @@ export class SakuraChatProvider implements SummarizationProvider {
 
     const result = await response.json();
     const content = this.extractContentFromChatResult(result);
-    return { summary: content.trim() };
+    const cleaned = this.sanitizeToJapaneseSummary(content);
+    return { summary: cleaned };
   }
 
   private buildSystemPrompt(): string {
@@ -252,6 +253,62 @@ export class SakuraChatProvider implements SummarizationProvider {
       .replace(/\s+We'll output.*$/i, "")
       .replace(/\s+Should be fine\.*$/i, "");
     // 上限を軽く制限
-    return cleaned.length > 350 ? cleaned.slice(0, 350) : cleaned;
+    const limited = cleaned.length > 350 ? cleaned.slice(0, 350) : cleaned;
+    return this.sanitizeToJapaneseSummary(limited);
+  }
+
+  /**
+   * モデルが返す冗長な英語の推論文などを除去し、
+   * 日本語の1-2文のみを返すサニタイズ処理
+   */
+  private sanitizeToJapaneseSummary(raw: string): string {
+    const text = (raw ?? "").trim();
+    if (!text) return "";
+
+    // 行ごとに分割し、日本語(ひらがな/カタカナ/漢字)を含む行のみ残す
+    const jpRe = /[\u3040-\u30FF\u3400-\u9FFF]/;
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .filter((l) => jpRe.test(l));
+
+    // 候補がなければ元文を返す（ただし最後に文区切りで短縮）
+    const candidate = lines[0] ?? text;
+
+    // 先頭/末尾の引用符を除去
+    const dequoted = candidate.replace(/^[「"']+|[」"']+$/g, "");
+
+    // 「要約:」「まとめ:」などの接頭を除去
+    const noLabel = dequoted.replace(/^(要約|まとめ)\s*[:：]\s*/u, "").trim();
+
+    // 日本語/英語の文区切りで分割（。．.!??. も考慮）
+    const sentencesAll = noLabel
+      .split(/(?<=[。．！!？\?\.])/u)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    // 文ごとに日本語と英字の比率で判定し、英語優勢な文を除外
+    const sentences = sentencesAll.filter((s) => {
+      const jpCount = (s.match(/[\u3040-\u30FF\u3400-\u9FFF]/g) ?? []).length;
+      const enCount = (s.match(/[A-Za-z]/g) ?? []).length;
+      if (jpCount === 0) return false;
+      // 英字が多すぎる文は除外（英字 <= jp の半分 もしくは 英字 <= 2 まで許容）
+      return enCount <= 2 || enCount <= Math.floor(jpCount / 2);
+    });
+    const joined = sentences.slice(0, 2).join("");
+
+    // 文字数も軽く制限
+    let finalText = joined || noLabel;
+    // まだ英語テキストが末尾に残る場合、日本語文の終端（。．）までで打ち切り
+    if (/[A-Za-z]/.test(finalText)) {
+      const cutIdx =
+        finalText.indexOf("。") >= 0
+          ? finalText.indexOf("。") + 1
+          : finalText.indexOf("．") + 1;
+      if (cutIdx > 0) {
+        finalText = finalText.slice(0, cutIdx);
+      }
+    }
+    return finalText.length > 200 ? finalText.slice(0, 200) : finalText;
   }
 }
