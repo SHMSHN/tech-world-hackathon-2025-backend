@@ -101,3 +101,18 @@ verify_jwt = false
 
 [functions.assess-risk]
 verify_jwt = false
+
+[functions.care-plans]
+verify_jwt = false
+
+[functions.care-plans-create]
+verify_jwt = false
+
+[functions.care-plans-delete]
+verify_jwt = false
+
+[functions.care-plans-done]
+verify_jwt = false
+
+[functions.care-plans-pending]
+verify_jwt = false
