@@ -28,21 +28,21 @@ PostgreSQL 15 + Supabase を使用。
        │              │ created_at  │
        │              └──────┬──────┘
        │                     │
-       │    ┌────────────────┴────────────────┐
-       │    │                                 │
-       ▼    ▼                                 ▼
-┌─────────────┐                        ┌─────────────┐
-│    logs     │                        │ care_plans  │
-│─────────────│                        │─────────────│
-│ id (PK)     │                        │ id (PK)     │
-│ user_id(FK) │                        │ user_id(FK) │
-│ caregiver_id│                        │ summary     │
-│ content     │                        │ goals       │
-│ created_at  │                        │ notes       │
-└─────────────┘                        │ status      │
-  (Realtime有効)                       │ created_at  │
-                                       └─────────────┘
-                                         (未実装)
+       │    ┌────────────────┼────────────────┐
+       │    │                │                │
+       ▼    ▼                ▼                ▼
+┌─────────────┐       ┌─────────────┐  ┌─────────────┐
+│    logs     │       │   alerts    │  │ care_plans  │
+│─────────────│       │─────────────│  │─────────────│
+│ id (PK)     │◄──────│ log_id (FK) │  │ id (PK)     │
+│ user_id(FK) │       │ id (PK)     │  │ user_id(FK) │
+│ caregiver_id│       │ user_id(FK) │  │ title       │
+│ date        │       │ level       │  │ goal        │
+│ time        │       │ title       │  │ tasks       │
+│ content     │       │ description │  │ status      │
+│ tags        │       │ status      │  │ level       │
+│ created_at  │       │ created_at  │  │ created_at  │
+└─────────────┘       └─────────────┘  └─────────────┘
 ```
 
 ---
@@ -187,23 +187,23 @@ AI が生成する介護計画を管理。
 
 FK 依存関係に基づく適用順序:
 
-| 順序 | ファイル                                       | 内容                                   |
-| ---- | ---------------------------------------------- | -------------------------------------- |
-| 1    | `20251213000001_create_caregivers.sql`         | caregivers テーブル                    |
-| 2    | `20251213000002_create_users.sql`              | users テーブル                         |
-| 3    | `20251213000003_create_logs.sql`               | logs テーブル                          |
+| 順序 | ファイル                                         | 内容                                 |
+| ---- | ------------------------------------------------ | ------------------------------------ |
+| 1    | `20251213000001_create_caregivers.sql`           | caregivers テーブル                  |
+| 2    | `20251213000002_create_users.sql`                | users テーブル                       |
+| 3    | `20251213000003_create_logs.sql`                 | logs テーブル                        |
 | 4    | `20251213000004_remove_tags_enable_realtime.sql` | tags/date/time 削除、Realtime 有効化 |
-| 5    | `20251213000005_seed_data.sql`                 | シードデータ（15名分）                 |
-| 6    | `20251213000006_add_name_kana.sql`             | name_kana カラム追加                   |
-| 7    | `20251213000007_create_care_plans.sql`         | care_plans テーブル（未実装）          |
+| 5    | `20251213000005_seed_data.sql`                   | シードデータ（15 名分）              |
+| 6    | `20251213000006_add_name_kana.sql`               | name_kana カラム追加                 |
+| 7    | `20251213000007_create_care_plans.sql`           | care_plans テーブル（未実装）        |
 
 ---
 
 ## 更新履歴
 
-| 日付       | 内容                                              |
-| ---------- | ------------------------------------------------- |
-| 2025-12-13 | 初版作成                                          |
-| 2025-12-13 | alerts テーブル削除                               |
-| 2025-12-13 | logs から tags/date/time 削除、Realtime 有効化   |
+| 日付       | 内容                                                |
+| ---------- | --------------------------------------------------- |
+| 2025-12-13 | 初版作成                                            |
+| 2025-12-13 | alerts テーブル削除                                 |
+| 2025-12-13 | logs から tags/date/time 削除、Realtime 有効化      |
 | 2025-12-13 | users に name_kana 追加、シードデータを 15 名に拡充 |
