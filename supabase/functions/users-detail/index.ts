@@ -8,16 +8,15 @@ interface CaregiverInfo {
 
 interface LogItem {
   id: number;
-  date: string;
-  time: string;
+  createdAt: string;
   author: string;
   content: string;
-  tags: string[];
 }
 
 interface UserDetail {
   id: number;
   name: string;
+  nameKana: string | null;
   age: number | null;
   gender: string | null;
   phone: string | null;
@@ -88,6 +87,7 @@ Deno.serve(async (req) => {
       .select(`
         id,
         name,
+        name_kana,
         age,
         gender,
         phone,
@@ -122,17 +122,14 @@ Deno.serve(async (req) => {
       .from("logs")
       .select(`
         id,
-        date,
-        time,
+        created_at,
         content,
-        tags,
         caregivers!caregiver_id (
           name
         )
       `)
       .eq("user_id", userIdNum)
-      .order("date", { ascending: false })
-      .order("time", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(10);
 
     if (logsError) {
@@ -145,6 +142,7 @@ Deno.serve(async (req) => {
     const result: UserDetail = {
       id: user.id,
       name: user.name,
+      nameKana: user.name_kana,
       age: user.age,
       gender: user.gender,
       phone: user.phone,
@@ -158,11 +156,9 @@ Deno.serve(async (req) => {
       // deno-lint-ignore no-explicit-any
       recentLogs: logs?.map((log: any) => ({
         id: log.id,
-        date: log.date,
-        time: log.time,
+        createdAt: log.created_at,
         author: log.caregivers?.name ?? "不明",
         content: log.content,
-        tags: log.tags ?? [],
       })) ?? [],
     };
 

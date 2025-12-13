@@ -61,8 +61,8 @@ http://localhost:54321/functions/v1
 | POST     | /summarize          | テキスト要約（AI）     | 実装済 |
 | GET      | /users              | 利用者一覧             | 実装済 |
 | GET      | /users-detail       | 利用者詳細             | 実装済 |
-| POST     | /logs/preview       | ログプレビュー（AI）   | 未実装 |
-| POST     | /logs/confirm       | ログ確定・保存         | 未実装 |
+| POST     | /logs-preview       | ログプレビュー（AI）   | 実装済 |
+| POST     | /logs-confirm       | ログ確定・保存         | 実装済 |
 | POST     | /care-plan/generate | 介護計画生成（AI）     | 未実装 |
 | PATCH    | /care-plan/:id      | 介護計画ステータス更新 | 未実装 |
 
@@ -156,6 +156,7 @@ curl -X POST http://localhost:54321/functions/v1/summarize \
   {
     "id": 1,
     "name": "山田 花子",
+    "nameKana": "やまだ はなこ",
     "age": 82,
     "gender": "女性",
     "careLevel": "要介護2",
@@ -171,6 +172,7 @@ curl -X POST http://localhost:54321/functions/v1/summarize \
 | ---------- | -------------- | ------------------------ |
 | id         | number         | 利用者 ID                |
 | name       | string         | 氏名                     |
+| nameKana   | string \| null | ふりがな                 |
 | age        | number \| null | 年齢                     |
 | gender     | string \| null | 性別                     |
 | careLevel  | string \| null | 要介護レベル             |
@@ -203,6 +205,7 @@ curl http://localhost:54321/functions/v1/users
 {
   "id": 1,
   "name": "山田 花子",
+  "nameKana": "やまだ はなこ",
   "age": 82,
   "gender": "女性",
   "phone": "090-1234-5678",
@@ -217,11 +220,9 @@ curl http://localhost:54321/functions/v1/users
   "recentLogs": [
     {
       "id": 1,
-      "date": "2024-12-13",
-      "time": "18:30",
+      "createdAt": "2024-12-13T18:30:00Z",
       "author": "田中 美咲",
-      "content": "夕食は8割ほど摂取...",
-      "tags": ["食事", "服薬"]
+      "content": "夕食は8割ほど摂取..."
     }
   ]
 }
@@ -233,6 +234,7 @@ curl http://localhost:54321/functions/v1/users
 | ---------- | -------------- | ------------------------ |
 | id         | number         | 利用者 ID                |
 | name       | string         | 氏名                     |
+| nameKana   | string \| null | ふりがな                 |
 | age        | number \| null | 年齢                     |
 | gender     | string \| null | 性別                     |
 | phone      | string \| null | 電話番号                 |
@@ -285,7 +287,8 @@ AI がログ内容からタグを分析します。
 
 ### POST /logs/confirm
 
-ログを確定して DB に保存します。
+ログを確定して DB に保存します。Realtime が有効なため、保存後にログ一覧がリアルタイム更新されます。
+記録日時は `created_at` に自動設定されます。
 
 #### リクエスト
 
@@ -293,33 +296,27 @@ AI がログ内容からタグを分析します。
 {
   "userId": 1,
   "caregiverId": 2,
-  "date": "2024-12-13",
-  "time": "18:30",
-  "content": "夕食は8割ほど摂取...",
-  "tags": ["食事", "服薬"]
+  "content": "夕食は8割ほど摂取..."
 }
 ```
 
-| フィールド  | 型       | 必須 | 説明                 |
-| ----------- | -------- | ---- | -------------------- |
-| userId      | number   | Yes  | 利用者 ID            |
-| caregiverId | number   | Yes  | 介護者 ID            |
-| date        | string   | Yes  | 記録日（YYYY-MM-DD） |
-| time        | string   | Yes  | 記録時刻（HH:MM）    |
-| content     | string   | Yes  | 記録内容             |
-| tags        | string[] | No   | タグ配列             |
+| フィールド  | 型     | 必須 | 説明      |
+| ----------- | ------ | ---- | --------- |
+| userId      | number | Yes  | 利用者 ID |
+| caregiverId | number | Yes  | 介護者 ID |
+| content     | string | Yes  | 記録内容  |
 
 #### レスポンス
 
-```json
-{
-  "logId": 5
-}
-```
+成功時はステータス 200 のみ（ボディなし）
 
-| フィールド | 型     | 説明              |
-| ---------- | ------ | ----------------- |
-| logId      | number | 作成されたログ ID |
+#### cURL 例
+
+```bash
+curl -X POST http://localhost:54321/functions/v1/logs-confirm \
+  -H "Content-Type: application/json" \
+  -d '{"userId":1,"caregiverId":2,"content":"夕食は8割ほど摂取..."}'
+```
 
 ---
 
@@ -432,7 +429,8 @@ SAKURA_CHAT_MODEL=gpt-oss-120b
 
 ## 更新履歴
 
-| 日付       | 内容                               |
-| ---------- | ---------------------------------- |
-| 2025-12-13 | 初版作成                           |
-| 2025-12-13 | alerts 関連 API・フィールド削除    |
+| 日付       | 内容                                              |
+| ---------- | ------------------------------------------------- |
+| 2025-12-13 | 初版作成                                          |
+| 2025-12-13 | alerts 関連 API・フィールド削除                   |
+| 2025-12-13 | nameKana フィールド追加、recentLogs を createdAt に変更 |

@@ -17,8 +17,9 @@ PostgreSQL 15 + Supabase を使用。
 │ name        │       │ caregiver_id│
 │ role        │       │ id (PK)     │
 │ phone       │       │ name        │
-│ created_at  │       │ age         │
-└──────┬──────┘       │ gender      │
+│ created_at  │       │ name_kana   │
+└──────┬──────┘       │ age         │
+       │              │ gender      │
        │              │ phone       │
        │              │ address     │
        │              │ care_level  │
@@ -36,12 +37,12 @@ PostgreSQL 15 + Supabase を使用。
 │ id (PK)     │                        │ id (PK)     │
 │ user_id(FK) │                        │ user_id(FK) │
 │ caregiver_id│                        │ summary     │
-│ date        │                        │ goals       │
-│ time        │                        │ notes       │
-│ content     │                        │ status      │
-│ tags        │                        │ created_at  │
-│ created_at  │                        └─────────────┘
-└─────────────┘                          (未実装)
+│ content     │                        │ goals       │
+│ created_at  │                        │ notes       │
+└─────────────┘                        │ status      │
+  (Realtime有効)                       │ created_at  │
+                                       └─────────────┘
+                                         (未実装)
 ```
 
 ---
@@ -81,6 +82,7 @@ PostgreSQL 15 + Supabase を使用。
 | -------------------- | ----------- | ---- | ---------- | ------------------- |
 | id                   | SERIAL      | NO   | 自動採番   | 主キー              |
 | name                 | TEXT        | NO   | -          | 氏名                |
+| name_kana            | TEXT        | YES  | -          | ふりがな            |
 | age                  | INTEGER     | YES  | -          | 年齢                |
 | gender               | TEXT        | YES  | -          | 性別                |
 | phone                | TEXT        | YES  | -          | 電話番号            |
@@ -116,42 +118,29 @@ PostgreSQL 15 + Supabase を使用。
 
 ### 3. logs（介護記録）
 
-日々の介護記録を管理。
+日々の介護記録を管理。Supabase Realtime が有効。
 
 | カラム       | 型          | NULL | デフォルト | 説明            |
 | ------------ | ----------- | ---- | ---------- | --------------- |
 | id           | SERIAL      | NO   | 自動採番   | 主キー          |
 | user_id      | INTEGER     | NO   | -          | 利用者 ID（FK） |
 | caregiver_id | INTEGER     | YES  | -          | 記録者 ID（FK） |
-| date         | DATE        | NO   | -          | 記録日          |
-| time         | TIME        | NO   | -          | 記録時刻        |
 | content      | TEXT        | NO   | -          | 記録内容        |
-| tags         | TEXT[]      | YES  | -          | タグ配列        |
 | created_at   | TIMESTAMPTZ | YES  | NOW()      | 作成日時        |
 
 **インデックス:**
 
 - `idx_logs_user_id` - user_id
 - `idx_logs_caregiver_id` - caregiver_id
-- `idx_logs_date` - date DESC
-- `idx_logs_user_date` - user_id, date DESC
-- `idx_logs_tags` - tags (GIN)
 
 **外部キー:**
 
 - `user_id` → `users.id` (CASCADE DELETE)
 - `caregiver_id` → `caregivers.id`
 
-**タグの種類:**
-| 値 | 説明 |
-|----|------|
-| 食事 | 食事関連 |
-| 服薬 | 服薬関連 |
-| 入浴 | 入浴関連 |
-| 排泄 | 排泄関連 |
-| 体調 | 体調関連 |
-| 行動 | 行動・活動関連 |
-| 通院 | 通院関連 |
+**Realtime:**
+
+- `supabase_realtime` publication に追加済み
 
 ---
 
@@ -198,19 +187,23 @@ AI が生成する介護計画を管理。
 
 FK 依存関係に基づく適用順序:
 
-| 順序 | ファイル                               | 内容                          |
-| ---- | -------------------------------------- | ----------------------------- |
-| 1    | `20251213000001_create_caregivers.sql` | caregivers テーブル           |
-| 2    | `20251213000002_create_users.sql`      | users テーブル                |
-| 3    | `20251213000003_create_logs.sql`       | logs テーブル                 |
-| 4    | `20251213000004_seed_data.sql`         | シードデータ                  |
-| 5    | `20251213000005_create_care_plans.sql` | care_plans テーブル（未実装） |
+| 順序 | ファイル                                       | 内容                                   |
+| ---- | ---------------------------------------------- | -------------------------------------- |
+| 1    | `20251213000001_create_caregivers.sql`         | caregivers テーブル                    |
+| 2    | `20251213000002_create_users.sql`              | users テーブル                         |
+| 3    | `20251213000003_create_logs.sql`               | logs テーブル                          |
+| 4    | `20251213000004_remove_tags_enable_realtime.sql` | tags/date/time 削除、Realtime 有効化 |
+| 5    | `20251213000005_seed_data.sql`                 | シードデータ（15名分）                 |
+| 6    | `20251213000006_add_name_kana.sql`             | name_kana カラム追加                   |
+| 7    | `20251213000007_create_care_plans.sql`         | care_plans テーブル（未実装）          |
 
 ---
 
 ## 更新履歴
 
-| 日付       | 内容                  |
-| ---------- | --------------------- |
-| 2025-12-13 | 初版作成              |
-| 2025-12-13 | alerts テーブル削除   |
+| 日付       | 内容                                              |
+| ---------- | ------------------------------------------------- |
+| 2025-12-13 | 初版作成                                          |
+| 2025-12-13 | alerts テーブル削除                               |
+| 2025-12-13 | logs から tags/date/time 削除、Realtime 有効化   |
+| 2025-12-13 | users に name_kana 追加、シードデータを 15 名に拡充 |
