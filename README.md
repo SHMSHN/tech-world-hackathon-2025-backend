@@ -175,6 +175,46 @@ supabase stop
 
 ## 追加エンドポイント: care_plans のステータス更新
 
+および取得
+
+### GET/POST /care-plans
+
+`user_id` に紐づく `care_plans` を全件取得します（`created_at` の降順）。
+
+例（GET, クエリパラメータ）:
+
+```bash
+curl "http://localhost:54321/functions/v1/care-plans?user_id=1"
+```
+
+例（POST, JSON）:
+
+```bash
+curl -X POST http://localhost:54321/functions/v1/care-plans \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":1}'
+```
+
+レスポンス例:
+
+```json
+{
+  "items": [
+    {
+      "id": 42,
+      "plan_uuid": "b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12",
+      "user_id": 1,
+      "title": "服薬漏れが2日連続",
+      "goal": "服薬忘れが解消されている",
+      "tasks": ["服薬タイマーを設定する", "ピルケースを導入する"],
+      "level": "alert",
+      "status": "pending",
+      "created_at": "2025-12-13T00:00:00Z"
+    }
+  ]
+}
+```
+
 ### POST /care-plans-done
 
 `care_plans.status` を `done` に更新します。`uuid` もしくは `uuids`（推奨）を指定してください。任意で `user_id` でスコープを制限できます。
