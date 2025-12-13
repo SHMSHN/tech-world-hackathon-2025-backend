@@ -288,6 +288,42 @@ curl -X POST http://localhost:54321/functions/v1/care-plans-pending \
   -d '{"uuids": ["b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12"], "user_id": 1}'
 ```
 
+### POST /care-plans-create
+
+クライアントから任意の項目を指定して `care_plans` に登録します。
+
+```bash
+curl -X POST http://localhost:54321/functions/v1/care-plans-create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": 1,
+    "replace_pending": false,
+    "items": [
+      {
+        "uuid": "c0f2d1e9-1234-4bcd-9abc-ffeeddccbbaa",
+        "title": "夜間の転倒予防",
+        "goal": "夜間の転倒ゼロを維持",
+        "tasks": ["夜間動線の確認", "足元照明の設置"],
+        "level": "alert",
+        "status": "pending"
+      },
+      {
+        "title": "服薬支援の強化",
+        "goal": "服薬忘れの解消",
+        "tasks": ["服薬タイマー設定", "ピルケース導入"],
+        "level": "warning"
+      }
+    ]
+  }'
+```
+
+備考:
+
+- `uuid` を省略した場合はサーバー側で生成します（`plan_uuid` として保存）。
+- `tasks` は配列（またはカンマ区切り/JSON 文字列配列でも可）。
+- `status` は `pending|done`、省略時は `pending`。
+- `replace_pending=true` を指定すると、同 `user_id` の既存 `pending` を削除してから登録します。
+
 レスポンス例:
 
 ```json
