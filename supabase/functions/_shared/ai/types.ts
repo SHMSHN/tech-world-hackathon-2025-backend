@@ -11,6 +11,7 @@ export interface TranscriptionResult {
 export interface AIProviderConfig {
   apiKey: string;
   baseUrl?: string;
+  model?: string;
 }
 
 /**
@@ -19,13 +20,25 @@ export interface AIProviderConfig {
  */
 export interface TranscriptionProvider {
   readonly name: string;
-  transcribe(
-    audio: Uint8Array,
-    mimeType: string
-  ): Promise<TranscriptionResult>;
+  transcribe(audio: Uint8Array, mimeType: string): Promise<TranscriptionResult>;
 }
 
 /**
  * 対応するAIプロバイダーの種類
  */
 export type AIProviderType = "openai" | "sakura";
+
+/**
+ * 要約結果
+ */
+export interface SummarizationResult {
+  summary: string;
+}
+
+/**
+ * 要約プロバイダー
+ */
+export interface SummarizationProvider {
+  readonly name: string;
+  summarize(text: string): Promise<SummarizationResult>;
+}
