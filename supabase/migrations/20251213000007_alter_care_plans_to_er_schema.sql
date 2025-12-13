@@ -1,6 +1,14 @@
 -- care_plans を ER 図の設計に合わせる
 -- 目標: columns = id, user_id(FK), title, goal, tasks, status, level, created_at
 
+-- テーブルが存在しない場合は作成（リモートDBで000006が実行されていない場合への対応）
+CREATE TABLE IF NOT EXISTS care_plans (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 追加カラム
 ALTER TABLE care_plans
   ADD COLUMN IF NOT EXISTS title TEXT,
