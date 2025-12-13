@@ -177,6 +177,28 @@ supabase stop
 
 および取得
 
+### POST/DELETE /care-plans-delete
+
+`user_id` と `uuid`（もしくは `uuids`）で該当する `care_plans` を削除します。
+
+```bash
+# 単一UUIDを削除
+curl -X POST http://localhost:54321/functions/v1/care-plans-delete \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":1,"uuid":"b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12"}'
+
+# 複数UUIDを削除
+curl -X POST http://localhost:54321/functions/v1/care-plans-delete \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":1,"uuids":["b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12","cc2d2b51-3b0f-4c05-8e0f-5cfb2ddbbf3a"]}'
+```
+
+レスポンス例:
+
+```json
+{ "deletedUuids": ["b6e6a9b6-7a3f-4a61-9b5b-3c7a1e0f9a12"] }
+```
+
 ### GET/POST /care-plans
 
 `user_id` に紐づく `care_plans` を全件取得します（`created_at` の降順）。
