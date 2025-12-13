@@ -7,7 +7,7 @@
 - [x] POST /transcribe - 音声文字起こし
 - [x] AI 抽象化レイヤー（OpenAI/Sakura 切り替え可能）
 - [x] CORS ユーティリティ
-- [x] DB マイグレーション（caregivers, users, logs, alerts + seed）
+- [x] DB マイグレーション（caregivers, users, logs + seed）
 - [x] supabase-client.ts
 - [x] GET /users - 利用者一覧
 - [x] GET /users-detail - 利用者詳細
@@ -18,7 +18,7 @@
 
 ### Phase 1: care_plans テーブル追加
 
-- [ ] `supabase/migrations/20251213000006_create_care_plans.sql` 作成
+- [ ] `supabase/migrations/20251213000005_create_care_plans.sql` 作成
 
 ```sql
 CREATE TABLE care_plans (
@@ -44,9 +44,8 @@ CREATE TABLE care_plans (
 
 ### Phase 3: Edge Functions 作成
 
-- [ ] `logs-preview/index.ts` - POST /logs/preview（AI 要約プレビュー）
+- [ ] `logs-preview/index.ts` - POST /logs/preview（AI タグ分析）
 - [ ] `logs-confirm/index.ts` - POST /logs/confirm（DB 保存）
-- [ ] `alerts-update/index.ts` - PATCH /alerts/:id（ステータス更新）
 - [ ] `care-plan/index.ts` - POST /care-plan/generate（AI 計画生成）
 - [ ] `care-plan-update/index.ts` - PATCH /care-plan/:id（ステータス更新）
 
@@ -55,7 +54,6 @@ CREATE TABLE care_plans (
 - [ ] `config.toml` に追加
   - [ ] functions.logs-preview
   - [ ] functions.logs-confirm
-  - [ ] functions.alerts-update
   - [ ] functions.care-plan
   - [ ] functions.care-plan-update
 
@@ -65,7 +63,7 @@ CREATE TABLE care_plans (
 
 ### POST /logs/preview
 
-AI がログ内容からタグとアラートを分析
+AI がログ内容からタグを分析
 
 ```typescript
 // Request
@@ -73,12 +71,7 @@ AI がログ内容からタグとアラートを分析
 
 // Response
 {
-  "tags": ["食事", "服薬"],
-  "alert": {
-    "level": "yellow",
-    "title": "服薬忘れ",
-    "description": "本人が服薬を忘れており声かけが必要だった"
-  }
+  "tags": ["食事", "服薬"]
 }
 ```
 
@@ -92,26 +85,11 @@ AI がログ内容からタグとアラートを分析
   "date": "2024-12-13",
   "time": "18:30",
   "content": "夕食は8割ほど摂取...",
-  "tags": ["食事", "服薬"],
-  "alert": {
-    "level": "yellow",
-    "title": "服薬忘れ",
-    "description": "..."
-  }
+  "tags": ["食事", "服薬"]
 }
 
 // Response
-{ "logId": 5, "alertId": 3 }
-```
-
-### PATCH /alerts/:id
-
-```typescript
-// Request
-{ "status": "done" }  // pending / done
-
-// Response
-{ "id": 3, "status": "done" }
+{ "logId": 5 }
 ```
 
 ### POST /care-plan/generate
@@ -178,4 +156,4 @@ SAKURA_CHAT_MODEL=gpt-oss-120b
 
 ## 更新日
 
-2025 年 12 月 13 日 15:38
+2025 年 12 月 13 日

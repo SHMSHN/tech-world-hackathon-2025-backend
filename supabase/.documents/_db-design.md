@@ -27,21 +27,21 @@ PostgreSQL 15 + Supabase を使用。
        │              │ created_at  │
        │              └──────┬──────┘
        │                     │
-       │    ┌────────────────┼────────────────┐
-       │    │                │                │
-       ▼    ▼                ▼                ▼
-┌─────────────┐       ┌─────────────┐  ┌─────────────┐
-│    logs     │       │   alerts    │  │ care_plans  │
-│─────────────│       │─────────────│  │─────────────│
-│ id (PK)     │◄──────│ log_id (FK) │  │ id (PK)     │
-│ user_id(FK) │       │ id (PK)     │  │ user_id(FK) │
-│ caregiver_id│       │ user_id(FK) │  │ summary     │
-│ date        │       │ level       │  │ goals       │
-│ time        │       │ title       │  │ notes       │
-│ content     │       │ description │  │ status      │
-│ tags        │       │ status      │  │ created_at  │
-│ created_at  │       │ created_at  │  └─────────────┘
-└─────────────┘       └─────────────┘    (未実装)
+       │    ┌────────────────┴────────────────┐
+       │    │                                 │
+       ▼    ▼                                 ▼
+┌─────────────┐                        ┌─────────────┐
+│    logs     │                        │ care_plans  │
+│─────────────│                        │─────────────│
+│ id (PK)     │                        │ id (PK)     │
+│ user_id(FK) │                        │ user_id(FK) │
+│ caregiver_id│                        │ summary     │
+│ date        │                        │ goals       │
+│ time        │                        │ notes       │
+│ content     │                        │ status      │
+│ tags        │                        │ created_at  │
+│ created_at  │                        └─────────────┘
+└─────────────┘                          (未実装)
 ```
 
 ---
@@ -155,54 +155,7 @@ PostgreSQL 15 + Supabase を使用。
 
 ---
 
-### 4. alerts（アラート）
-
-要注意事項を管理。
-
-| カラム      | 型          | NULL | デフォルト | 説明                 |
-| ----------- | ----------- | ---- | ---------- | -------------------- |
-| id          | SERIAL      | NO   | 自動採番   | 主キー               |
-| user_id     | INTEGER     | NO   | -          | 利用者 ID（FK）      |
-| log_id      | INTEGER     | YES  | -          | 関連ログ ID（FK）    |
-| level       | TEXT        | NO   | -          | レベル（red/yellow） |
-| title       | TEXT        | NO   | -          | タイトル             |
-| description | TEXT        | YES  | -          | 詳細説明             |
-| status      | TEXT        | YES  | 'active'   | ステータス           |
-| created_at  | TIMESTAMPTZ | YES  | NOW()      | 作成日時             |
-
-**インデックス:**
-
-- `idx_alerts_user_id` - user_id
-- `idx_alerts_log_id` - log_id
-- `idx_alerts_status` - status
-- `idx_alerts_level` - level
-- `idx_alerts_user_status` - user_id, status
-
-**外部キー:**
-
-- `user_id` → `users.id` (CASCADE DELETE)
-- `log_id` → `logs.id` (SET NULL ON DELETE)
-
-**チェック制約:**
-
-- `chk_alerts_level` - level IN ('red', 'yellow')
-- `chk_alerts_status` - status IN ('pending', 'done')
-
-**レベルの種類:**
-| 値 | 説明 |
-|----|------|
-| red | 緊急（即時対応が必要） |
-| yellow | 注意（経過観察が必要） |
-
-**ステータスの種類:**
-| 値 | 説明 |
-|----|------|
-| pending | 未解決 |
-| done | 解決済み |
-
----
-
-### 5. care_plans（介護計画）【未実装】
+### 4. care_plans（介護計画）【未実装】
 
 AI が生成する介護計画を管理。
 
@@ -250,14 +203,14 @@ FK 依存関係に基づく適用順序:
 | 1    | `20251213000001_create_caregivers.sql` | caregivers テーブル           |
 | 2    | `20251213000002_create_users.sql`      | users テーブル                |
 | 3    | `20251213000003_create_logs.sql`       | logs テーブル                 |
-| 4    | `20251213000004_create_alerts.sql`     | alerts テーブル               |
-| 5    | `20251213000005_seed_data.sql`         | シードデータ                  |
-| 6    | `20251213000006_create_care_plans.sql` | care_plans テーブル（未実装） |
+| 4    | `20251213000004_seed_data.sql`         | シードデータ                  |
+| 5    | `20251213000005_create_care_plans.sql` | care_plans テーブル（未実装） |
 
 ---
 
 ## 更新履歴
 
-| 日付       | 内容     |
-| ---------- | -------- |
-| 2025-12-13 | 初版作成 |
+| 日付       | 内容                  |
+| ---------- | --------------------- |
+| 2025-12-13 | 初版作成              |
+| 2025-12-13 | alerts テーブル削除   |

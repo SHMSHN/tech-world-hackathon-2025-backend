@@ -63,7 +63,6 @@ http://localhost:54321/functions/v1
 | GET      | /users-detail       | 利用者詳細             | 実装済 |
 | POST     | /logs/preview       | ログプレビュー（AI）   | 未実装 |
 | POST     | /logs/confirm       | ログ確定・保存         | 未実装 |
-| PATCH    | /alerts/:id         | アラートステータス更新 | 未実装 |
 | POST     | /care-plan/generate | 介護計画生成（AI）     | 未実装 |
 | PATCH    | /care-plan/:id      | 介護計画ステータス更新 | 未実装 |
 
@@ -161,7 +160,6 @@ curl -X POST http://localhost:54321/functions/v1/summarize \
     "gender": "女性",
     "careLevel": "要介護2",
     "caregiver": "田中 美咲",
-    "activeAlerts": 2,
     "lastLogAt": "2024-12-13T18:30:00Z"
   }
 ]
@@ -169,16 +167,15 @@ curl -X POST http://localhost:54321/functions/v1/summarize \
 
 #### レスポンスフィールド
 
-| フィールド   | 型             | 説明                     |
-| ------------ | -------------- | ------------------------ |
-| id           | number         | 利用者 ID                |
-| name         | string         | 氏名                     |
-| age          | number \| null | 年齢                     |
-| gender       | string \| null | 性別                     |
-| careLevel    | string \| null | 要介護レベル             |
-| caregiver    | string \| null | 担当介護者名             |
-| activeAlerts | number         | 未解決アラート数         |
-| lastLogAt    | string \| null | 最終ログ日時（ISO 8601） |
+| フィールド | 型             | 説明                     |
+| ---------- | -------------- | ------------------------ |
+| id         | number         | 利用者 ID                |
+| name       | string         | 氏名                     |
+| age        | number \| null | 年齢                     |
+| gender     | string \| null | 性別                     |
+| careLevel  | string \| null | 要介護レベル             |
+| caregiver  | string \| null | 担当介護者名             |
+| lastLogAt  | string \| null | 最終ログ日時（ISO 8601） |
 
 #### cURL 例
 
@@ -190,7 +187,7 @@ curl http://localhost:54321/functions/v1/users
 
 ### GET /users-detail
 
-利用者詳細を取得します（最近のログ・アラート含む）。
+利用者詳細を取得します（最近のログ含む）。
 
 #### リクエスト
 
@@ -226,15 +223,6 @@ curl http://localhost:54321/functions/v1/users
       "content": "夕食は8割ほど摂取...",
       "tags": ["食事", "服薬"]
     }
-  ],
-  "alerts": [
-    {
-      "id": 1,
-      "level": "red",
-      "title": "服薬漏れが2日連続",
-      "description": "12/12, 12/13と連続で服薬忘れが発生",
-      "status": "pending"
-    }
   ]
 }
 ```
@@ -254,7 +242,6 @@ curl http://localhost:54321/functions/v1/users
 | notes      | string \| null | 備考                     |
 | caregiver  | object \| null | 担当介護者（id, name）   |
 | recentLogs | array          | 最近のログ（最大 10 件） |
-| alerts     | array          | 未解決アラート一覧       |
 
 #### cURL 例
 
@@ -268,7 +255,7 @@ curl "http://localhost:54321/functions/v1/users-detail?id=1"
 
 ### POST /logs/preview
 
-AI がログ内容からタグとアラートを分析します。
+AI がログ内容からタグを分析します。
 
 #### リクエスト
 
@@ -286,19 +273,13 @@ AI がログ内容からタグとアラートを分析します。
 
 ```json
 {
-  "tags": ["食事", "服薬"],
-  "alert": {
-    "level": "yellow",
-    "title": "服薬忘れ",
-    "description": "本人が服薬を忘れており声かけが必要だった"
-  }
+  "tags": ["食事", "服薬"]
 }
 ```
 
-| フィールド | 型             | 説明                                |
-| ---------- | -------------- | ----------------------------------- |
-| tags       | string[]       | 抽出されたタグ                      |
-| alert      | object \| null | 検出されたアラート（なければ null） |
+| フィールド | 型       | 説明           |
+| ---------- | -------- | -------------- |
+| tags       | string[] | 抽出されたタグ |
 
 ---
 
@@ -315,12 +296,7 @@ AI がログ内容からタグとアラートを分析します。
   "date": "2024-12-13",
   "time": "18:30",
   "content": "夕食は8割ほど摂取...",
-  "tags": ["食事", "服薬"],
-  "alert": {
-    "level": "yellow",
-    "title": "服薬忘れ",
-    "description": "..."
-  }
+  "tags": ["食事", "服薬"]
 }
 ```
 
@@ -332,56 +308,18 @@ AI がログ内容からタグとアラートを分析します。
 | time        | string   | Yes  | 記録時刻（HH:MM）    |
 | content     | string   | Yes  | 記録内容             |
 | tags        | string[] | No   | タグ配列             |
-| alert       | object   | No   | アラート情報         |
 
 #### レスポンス
 
 ```json
 {
-  "logId": 5,
-  "alertId": 3
+  "logId": 5
 }
 ```
 
-| フィールド | 型             | 説明                                   |
-| ---------- | -------------- | -------------------------------------- |
-| logId      | number         | 作成されたログ ID                      |
-| alertId    | number \| null | 作成されたアラート ID（なければ null） |
-
----
-
-### PATCH /alerts/:id
-
-アラートのステータスを更新します。
-
-#### リクエスト
-
-**パスパラメータ:**
-
-| パラメータ | 型     | 説明        |
-| ---------- | ------ | ----------- |
-| id         | number | アラート ID |
-
-**ボディ:**
-
-```json
-{
-  "status": "done"
-}
-```
-
-| フィールド | 型     | 必須 | 説明                       |
-| ---------- | ------ | ---- | -------------------------- |
-| status     | string | Yes  | ステータス（pending/done） |
-
-#### レスポンス
-
-```json
-{
-  "id": 3,
-  "status": "done"
-}
-```
+| フィールド | 型     | 説明              |
+| ---------- | ------ | ----------------- |
+| logId      | number | 作成されたログ ID |
 
 ---
 
@@ -494,6 +432,7 @@ SAKURA_CHAT_MODEL=gpt-oss-120b
 
 ## 更新履歴
 
-| 日付       | 内容     |
-| ---------- | -------- |
-| 2025-12-13 | 初版作成 |
+| 日付       | 内容                               |
+| ---------- | ---------------------------------- |
+| 2025-12-13 | 初版作成                           |
+| 2025-12-13 | alerts 関連 API・フィールド削除    |

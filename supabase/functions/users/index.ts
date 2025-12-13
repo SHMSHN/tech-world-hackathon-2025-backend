@@ -8,7 +8,6 @@ interface UserListItem {
   gender: string | null;
   careLevel: string | null;
   caregiver: string | null;
-  activeAlerts: number;
   lastLogAt: string | null;
 }
 
@@ -48,23 +47,6 @@ Deno.serve(async (req) => {
       throw new Error(`利用者取得エラー: ${usersError.message}`);
     }
 
-    // アクティブアラート数を取得
-    const { data: alertCounts, error: alertsError } = await supabase
-      .from("alerts")
-      .select("user_id")
-      .eq("status", "pending");
-
-    if (alertsError) {
-      throw new Error(`アラート取得エラー: ${alertsError.message}`);
-    }
-
-    // user_idごとのアラート数をカウント
-    const alertCountMap = new Map<number, number>();
-    alertCounts?.forEach((alert) => {
-      const count = alertCountMap.get(alert.user_id) ?? 0;
-      alertCountMap.set(alert.user_id, count + 1);
-    });
-
     // 最新ログ日時を取得
     const { data: latestLogs, error: logsError } = await supabase
       .from("logs")
@@ -94,7 +76,6 @@ Deno.serve(async (req) => {
       gender: user.gender,
       careLevel: user.care_level,
       caregiver: user.caregivers?.name ?? null,
-      activeAlerts: alertCountMap.get(user.id) ?? 0,
       lastLogAt: lastLogMap.get(user.id) ?? null,
     })) ?? [];
 

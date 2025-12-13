@@ -20,9 +20,3 @@ INSERT INTO logs (user_id, caregiver_id, date, time, content, tags) VALUES
   (1, 2, '2024-12-12', '14:00', '入浴介助。血圧 138/82。特に問題なし。', ARRAY['入浴', '体調']),
   (2, 2, '2024-12-13', '10:00', '散歩に同行。30分程度歩行。疲れた様子なし。', ARRAY['行動']),
   (3, 1, '2024-12-13', '09:00', '車椅子からベッドへの移乗介助。やや不安定だったため注意して実施。', ARRAY['行動']);
-
--- アラート
-INSERT INTO alerts (user_id, log_id, level, title, description, status) VALUES
-  (1, 3, 'yellow', '服薬忘れ', '本人が服薬を忘れており声かけが必要だった', 'pending'),
-  (1, NULL, 'red', '服薬漏れが2日連続', '12/12, 12/13と連続で服薬忘れが発生。家族への連絡と対策検討が必要。', 'pending'),
-  (3, 6, 'yellow', '移乗時の不安定', '車椅子からベッドへの移乗時に不安定さが見られた', 'pending');

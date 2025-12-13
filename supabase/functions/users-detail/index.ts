@@ -15,14 +15,6 @@ interface LogItem {
   tags: string[];
 }
 
-interface AlertItem {
-  id: number;
-  level: string;
-  title: string;
-  description: string | null;
-  status: string;
-}
-
 interface UserDetail {
   id: number;
   name: string;
@@ -35,7 +27,6 @@ interface UserDetail {
   notes: string | null;
   caregiver: CaregiverInfo | null;
   recentLogs: LogItem[];
-  alerts: AlertItem[];
 }
 
 Deno.serve(async (req) => {
@@ -148,18 +139,6 @@ Deno.serve(async (req) => {
       throw new Error(`ログ取得エラー: ${logsError.message}`);
     }
 
-    // アラートを取得（pending=未解決のみ）
-    const { data: alerts, error: alertsError } = await supabase
-      .from("alerts")
-      .select("id, level, title, description, status")
-      .eq("user_id", userIdNum)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
-
-    if (alertsError) {
-      throw new Error(`アラート取得エラー: ${alertsError.message}`);
-    }
-
     // レスポンス整形
     // deno-lint-ignore no-explicit-any
     const caregiver = (user as any).caregivers;
@@ -184,13 +163,6 @@ Deno.serve(async (req) => {
         author: log.caregivers?.name ?? "不明",
         content: log.content,
         tags: log.tags ?? [],
-      })) ?? [],
-      alerts: alerts?.map((alert) => ({
-        id: alert.id,
-        level: alert.level,
-        title: alert.title,
-        description: alert.description,
-        status: alert.status,
       })) ?? [],
     };
 
