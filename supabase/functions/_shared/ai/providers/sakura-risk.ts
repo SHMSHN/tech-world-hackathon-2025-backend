@@ -23,23 +23,51 @@ export class SakuraRiskProvider implements RiskAssessmentProvider {
     const systemPrompt = this.buildSystemPrompt();
     const userContent = JSON.stringify({ careLogs });
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    // まずは response_format ありで試行（未対応環境では後続でフォールバック）
+    const requestBodyWithJsonMode = {
+      model: this.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0,
+      top_p: 1,
+      max_tokens: 1200,
+    };
+    const requestBodyFallback = {
+      model: this.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      temperature: 0,
+      top_p: 1,
+      max_tokens: 1200,
+    };
+
+    let response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-        temperature: 0.2,
-        max_tokens: 800,
-      }),
+      body: JSON.stringify(requestBodyWithJsonMode),
     });
+
+    // フォールバック：一部実装で response_format 未対応の可能性
+    if (!response.ok && (response.status === 400 || response.status === 422)) {
+      response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestBodyFallback),
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -63,12 +91,16 @@ export class SakuraRiskProvider implements RiskAssessmentProvider {
   }
 
   private buildSystemPrompt(): string {
+    // JSON以外を出力させないための強力な制約＋少量のfew-shot
     return [
       "あなたは介護記録から認知症関連の危険兆候を抽出するアシスタントです。",
-      "出力は必ず有効なJSONのみを返してください。コードブロック（```）や説明文は禁止。ダブルクオートで正しいJSONにすること。",
-      "以下のスキーマに厳密に従うこと。tasks は最大3件。goal は短く具体的に。",
+      "必須要件:",
+      "- 有効なJSONのみを返す（説明・前置き・コードブロック(``` )禁止）",
+      "- ダブルクオートを用い、余計なキーを出さない、trailing comma禁止",
+      "- スキーマと値域に厳密に従う。日本語で簡潔に書く",
+      "- リスクが弱い/見当たらない場合も必ず有効なJSONを返す（findingsは空配列可）",
       "",
-      "Schema:",
+      "スキーマ（順序は任意、型と値域は厳守）:",
       "{",
       '  "riskLevel": "medium|high",',
       '  "findings": [',
@@ -85,9 +117,33 @@ export class SakuraRiskProvider implements RiskAssessmentProvider {
       '  "notes": "string"',
       "}",
       "",
-      "評価観点例：服薬忘れ/不遵守、転倒リスク（ふらつき・夜間トイレ頻回）、脱水/栄養低下、睡眠障害、行動の迷い・見当識障害、感情の変化など。",
-      "過剰な推測は避け、各findingには必ず具体的なログ文面の根拠（evidence）を入れてください。tasks/goalも日本語で記載。",
-      "入力ログは主に id と content（本文）のみが含まれます。date/time/author/tags はありません。全て日本語で記載してください。",
+      "制約:",
+      "- findings内の各要素には、入力ログ本文に基づく具体的な「evidence」を1〜5件含める",
+      "- tasksは最大3件まで。短い命令形で具体的に",
+      "- goalは1文で具体的に。結果が確認できる表現にする",
+      "- 過剰な推測は禁止（入力に無い事実は書かない）",
+      "- 全て日本語で出力する",
+      "",
+      "評価観点（例）: 服薬忘れ/不遵守、転倒リスク（ふらつき・夜間トイレ頻回）、脱水/栄養低下、睡眠障害、見当識障害、感情の変化など。",
+      "",
+      "良い出力例（例示。内容は入力に応じて生成し、必ずJSONのみ）:",
+      "{",
+      '  "riskLevel": "high",',
+      '  "findings": [',
+      "    {",
+      '      "id": "fall_risk",',
+      '      "title": "転倒リスクの増加",',
+      '      "severity": "high",',
+      '      "evidence": ["夜間のトイレ立ち上がりでふらつきが見られた", "歩行時に手すりを頻繁に使用"],',
+      '      "recommendation": "夜間動線の安全確保と見守り強化",',
+      '      "tasks": ["ベッド脇に足元灯を設置", "トイレまでの通路に障害物がないか点検", "夜間の見守り頻度を増やす"],',
+      '      "goal": "夜間の立ち上がり・歩行時に転倒・転落が発生しない" ',
+      "    }",
+      "  ],",
+      '  "notes": "昼間は安定しているが夜間の不安定さが目立つ"',
+      "}",
+      "",
+      "入力は JSON で careLogs の配列（主に {id, content}）。これらを解析して上記のJSONだけを返す。",
     ].join("\n");
   }
 
@@ -204,28 +260,69 @@ export class SakuraRiskProvider implements RiskAssessmentProvider {
   }
 
   private async refineToJson(rawText: string): Promise<string> {
-    const body = {
+    const bodyWithJsonMode = {
       model: this.model,
       messages: [
         {
           role: "system",
-          content:
-            "次の入力はモデル出力です。与えられた内容からスキーマ準拠の有効なJSONのみを返してください。コードブロックや説明は禁止。",
+          content: [
+            "次の入力はモデル出力（誤って説明やコードフェンスを含む可能性あり）です。",
+            "要求: 下記スキーマに準拠した有効なJSONのみを返すこと。説明・コードブロック禁止。",
+            "",
+            "スキーマ:",
+            "{",
+            '  "riskLevel": "medium|high",',
+            '  "findings": [',
+            "    {",
+            '      "id": "string",',
+            '      "title": "string",',
+            '      "severity": "medium|high",',
+            '      "evidence": ["string", "..."],',
+            '      "recommendation": "string",',
+            '      "tasks": ["string", "..."],',
+            '      "goal": "string"',
+            "    }",
+            "  ],",
+            '  "notes": "string"',
+            "}",
+          ].join("\n"),
         },
         { role: "user", content: rawText },
       ],
+      // 整形時もJSON出力を強制
+      response_format: { type: "json_object" },
       temperature: 0,
-      max_tokens: 600,
+      top_p: 1,
+      max_tokens: 800,
     };
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+    const bodyFallback = {
+      ...bodyWithJsonMode,
+      // response_format を削除
+      // deno-lint-ignore no-explicit-any
+    } as any;
+    delete (bodyFallback as any).response_format;
+
+    let res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(bodyWithJsonMode),
     });
+
+    if (!res.ok && (res.status === 400 || res.status === 422)) {
+      res = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(bodyFallback),
+      });
+    }
     if (!res.ok) {
       const t = await res.text();
       throw new Error(`Refine JSON error: ${res.status} - ${t}`);
