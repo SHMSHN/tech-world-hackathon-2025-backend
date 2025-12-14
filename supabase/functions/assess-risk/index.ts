@@ -133,7 +133,17 @@ Deno.serve(async (req) => {
       description?: string;
     }> = [];
     const provider = getRiskAssessmentProvider();
-    const result = await provider.assessRisk(careLogs);
+    // Sakura側の応答ブレ等で失敗が頻発するため、ここでソフトフォールバック（200 + 空配列）を返す
+    let result: any = null;
+    try {
+      result = await provider.assessRisk(careLogs);
+    } catch (e) {
+      console.error("Risk assessment failed (soft fallback to empty list):", e);
+      return new Response(JSON.stringify(items), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // 返却フォーマットをユーザー指定の配列に変換（AI出力をパススルー）
     items = (result.findings ?? []).map((f, i) => {
       const uuid = (globalThis as any)?.crypto?.randomUUID
